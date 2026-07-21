@@ -2,7 +2,7 @@
 
 <div align="center">
 <a href="https://arxiv.org/abs/2508.06026" target="_blank"><img src=https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv></a>
-<a href="https://github.com/wahaha12321/TSR/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/LICENSE-MIT-green"></a>
+<a href="https://github.com/TemporalSelfRewarding/TSR/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/LICENSE-MIT-green"></a>
 <a><img alt="Static Badge" src="https://img.shields.io/badge/made_with-Python-blue"></a>
 </div>
 
@@ -15,7 +15,7 @@ Self-Rewarding Language Models let a single model act as both the policy that ge
 Clone the repository and install the packages:
 
 ```bash
-git clone https://github.com/wahaha12321/TSR
+git clone https://github.com/TemporalSelfRewarding/TSR
 cd TSR
 pip install -r requirements.txt
 ```
