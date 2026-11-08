@@ -1,4 +1,5 @@
 import json
+import sys
 
 
 def read_json_file(file_path):
@@ -25,6 +26,8 @@ def parse_args():
     parser.add_argument('--input_path_future', type=str, default="../tsr/iter/sepaJudge/0_future_judgement.json")
     parser.add_argument('--input_path_rejected', type=str, default="../tsr/iter/sepaJudge/0_rejected_judgement.json")
     parser.add_argument('--output_path', type=str, default="../settings/tsr/data_dpo/iter0/train.json")
+    parser.add_argument('--strict', action='store_true', help='Upgrade chosen only when the future score is strictly higher.')
+    parser.add_argument('--filter', action='store_true', help='Keep only pairs with chosen score > rejected score.')
     args = parser.parse_args()
     return args
 args = parse_args()
@@ -75,7 +78,7 @@ for i in range(leng):
         rejected_score = score2
 
     
-    if score1_max > score3:
+    if score1_max > score3 or (args.strict and score1_max == score3):
         chosen = item1['responses'][index1_max]
         chosen_score = score1_max
     else:
@@ -83,6 +86,8 @@ for i in range(leng):
         chosen_score = score3
 
     if chosen == None or rejected == None:
+        continue
+    if args.filter and not chosen_score > rejected_score:
         continue
     dpo_data = {
         "prompt": prompt, 

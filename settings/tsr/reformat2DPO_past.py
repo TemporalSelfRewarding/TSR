@@ -1,4 +1,5 @@
 import json
+import sys
 
 
 
@@ -25,6 +26,7 @@ def parse_args():
     parser.add_argument('--input_path_chosen', type=str, default="../tsr/iter/sepaJudge/0_chosen_judgement.json")
     parser.add_argument('--input_path_rejected', type=str, default="../tsr/iter/sepaJudge/0_rejected_judgement.json")
     parser.add_argument('--output_path', type=str, default="../settings/tsr/data_dpo/iter0_tmp/train.json")
+    parser.add_argument('--filter', action='store_true', help='Keep only pairs with chosen score > rejected score.')
     args = parser.parse_args()
     return args
 args = parse_args()
@@ -68,6 +70,8 @@ for i in range(leng):
 
 
     if chosen == None or rejected == None:
+        continue
+    if args.filter and not score1_max > rejected_score:
         continue
 
     dpo_data = {

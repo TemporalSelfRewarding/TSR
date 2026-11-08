@@ -128,6 +128,7 @@ def get_datasets(
     configs: Optional[List[str]] = None,
     columns_to_keep: Optional[List[str]] = None,
     shuffle: bool = True,
+    local_train_file: Optional[str] = None,
 ) -> DatasetDict:
     """
     Loads one or more datasets with varying training set proportions.
@@ -144,6 +145,10 @@ def get_datasets(
             and for cpt this should be (at least) the text column.
         shuffle (`bool`, *optional*, defaults to `True`):
             Whether to shuffle the training and testing/validation data.
+        local_train_file (`str`, *optional*):
+            For local training directories, load only this JSON/JSONL file. DPO uses
+            `train.json` so nested comparison copies cannot enter the training set.
+            Leave unset for SFT's multiple IFT/EFT input files and Hub datasets.
 
     Returns
         [`DatasetDict`]: The dataset dictionary containing the loaded datasets.
@@ -172,6 +177,7 @@ def get_datasets(
         configs=configs,
         columns_to_keep=columns_to_keep,
         shuffle=shuffle,
+        local_train_file=local_train_file,
     )
     return raw_datasets
 
@@ -182,6 +188,7 @@ def mix_datasets(
     configs: Optional[List[str]] = None,
     columns_to_keep: Optional[List[str]] = None,
     shuffle=True,
+    local_train_file: Optional[str] = None,
 ) -> DatasetDict:
     """
     Loads and mixes datasets according to proportions specified in `dataset_mixer`.
@@ -213,12 +220,19 @@ def mix_datasets(
     for (ds, frac), ds_config in zip(dataset_mixer.items(), configs):
         fracs.append(frac)
         for split in splits:
-            try:
-                # Try first if dataset on a Hub repo
-                dataset = load_dataset(ds, ds_config, split=split)
-            except DatasetGenerationError:
-                # If not, check local dataset
-                dataset = load_from_disk(os.path.join(ds, split))
+            if local_train_file is not None and split == "train" and os.path.isdir(ds):
+                # Explicit data_files disables recursive discovery of official/train.json
+                # and other validation artifacts. Do not silently fall back if it is absent.
+                source = os.path.join(ds, local_train_file)
+                if not os.path.isfile(source):
+                    raise FileNotFoundError(f"Canonical DPO training file not found: {source}")
+                dataset = load_dataset("json", data_files={split: source}, split=split)
+            else:
+                try:
+                    # Hub datasets and SFT retain their original loading behavior.
+                    dataset = load_dataset(ds, ds_config, split=split)
+                except DatasetGenerationError:
+                    dataset = load_from_disk(os.path.join(ds, split))
 
             # Remove redundant columns to avoid schema conflicts on load
             dataset = dataset.remove_columns([col for col in dataset.column_names if col not in columns_to_keep])
