@@ -37,7 +37,7 @@ from alignment import (
     is_adapter_model,
 )
 from peft import PeftConfig, PeftModel
-from trl import DPOTrainer
+from alignment.dpo_trainer import TSRDPOTrainer
 
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,7 @@ def main():
         splits=data_args.dataset_splits,
         configs=data_args.dataset_configs,
         columns_to_keep=["messages", "chosen", "rejected", "prompt", "completion", "label"],
+        local_train_file="train.json",
     )
     logger.info(
         f"Training on the following splits: {[split + ' : ' + str(dset.num_rows) for split, dset in raw_datasets.items()]}"
@@ -187,7 +188,7 @@ def main():
     #########################
     # Instantiate DPO trainer
     #########################
-    trainer = DPOTrainer(
+    trainer = TSRDPOTrainer(
         model,
         ref_model,
         model_init_kwargs=model_kwargs,

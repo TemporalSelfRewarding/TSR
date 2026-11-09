@@ -1,5 +1,5 @@
 
-model_name_or_path: ../models/Llama-3.1-8B-mix-sft-epoch3-temporal-iterjudge-iter0_tmp
+model_name_or_path: ../models/Llama-3.1-8B-mix-sft-epoch3-temporal-iterjudge-iter0
 torch_dtype: null
 
 # Data training arguments

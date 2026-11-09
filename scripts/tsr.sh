@@ -1,14 +1,16 @@
 #!/bin/bash
-CONDA_PATH=""
-HF_TOKEN=""
+set -euo pipefail
+CONDA_PATH="${CONDA_PATH:-}"
+HF_TOKEN="${HF_TOKEN:-}"
 
 ### train from sft
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
+source "${SCRIPT_DIR}/common.sh"
 
 BASE_MODEL_PATH="${PROJECT_ROOT}/models/Llama-3.1-8B-mix-sft-epoch3"
-export CUDA_VISIBLE_DEVICES=1,2,3,4
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}"
 WORLD_SIZE=$(echo "${CUDA_VISIBLE_DEVICES}" | tr ',' '\n' | wc -l | tr -d ' ')
 TEST_MODE=False
 
@@ -28,7 +30,7 @@ do
     echo "==============================="
 
     # Activate the first Conda environment
-    source "${CONDA_PATH}/bin/activate" "${CONDA_PATH}/envs/myenv"
+    activate_tsr_env myenv
     echo "Activated Conda environment: myenv"
 
     # Navigate to the tsr directory
@@ -69,26 +71,22 @@ do
         --output_path "${PROJECT_ROOT}/settings/tsr/data_dpo/iter${iter}_tmp/train.json"
 
     # Activate the second Conda environment
-    source "${CONDA_PATH}/bin/activate" "${CONDA_PATH}/envs/handbook"
+    activate_tsr_env handbook
     echo "Activated Conda environment: handbook"
     # Navigate to the alignment-handbook directory
     cd "${PROJECT_ROOT}/alignment-handbook"
     echo "Changed directory to alignment-handbook"
     # Set necessary environment variables
-    export HF_HOME="${PROJECT_ROOT}/cache"
+    export HF_HOME="${HF_HOME:-${PROJECT_ROOT}/cache}"
     echo "Set environment variables HF_HOME and HF_ENDPOINT"
-    echo "Logging into Hugging Face CLI"
-    huggingface-cli login --token "${HF_TOKEN}"
+    # Hugging Face reads HF_TOKEN directly; an empty token must not trigger login.
     # Run the accelerate launch command with the current iteration's config
     echo "Running accelerate launch for iter${iter}_tmp"
-    ACCELERATE_LOG_LEVEL=info accelerate launch \
-        --config_file "${PROJECT_ROOT}/settings/tsr/config/deepspeed_zero3.yaml" \
-        --num_processes "${WORLD_SIZE}" \
-        scripts/run_dpo.py "${PROJECT_ROOT}/settings/tsr/config/dpo/config_full_iter${iter}_tmp.yaml"
+    launch_training dpo "${PROJECT_ROOT}/settings/tsr/config/dpo/config_full_iter${iter}_tmp.yaml"
     echo "Completed DPO_tmp: iter${iter}_tmp"
 
     # Activate the first Conda environment
-    source "${CONDA_PATH}/bin/activate" "${CONDA_PATH}/envs/myenv"
+    activate_tsr_env myenv
     echo "Activated Conda environment: myenv"
 
     # Navigate to the tsr directory
@@ -111,14 +109,21 @@ do
     # Run reformat2DPO_future.py to format the output
     mkdir -p "${PROJECT_ROOT}/settings/tsr/data_dpo/iter${iter}"
     echo "Running reformat2DPO_future.py for iter${iter}"
+    # The best archived run changes only iter1 D2. Iter0 and D1 keep upstream rules.
+    PAIR_FLAGS=()
+    if [[ "$iter" -eq 1 ]]; then
+        [[ "${TSR_ITER1_STRICT_FUTURE:-0}" == 1 ]] && PAIR_FLAGS+=(--strict)
+        [[ "${TSR_ITER1_FILTER_EQUAL_SCORES:-0}" == 1 ]] && PAIR_FLAGS+=(--filter)
+    fi
     python "${PROJECT_ROOT}/settings/tsr/reformat2DPO_future.py" \
         --input_path_chosen "${PROJECT_ROOT}/tsr/iter/iterJudge/${iter}_chosen_judgement.json" \
         --input_path_future "${PROJECT_ROOT}/tsr/iter/iterJudge/${iter}_future_judgement.json" \
         --input_path_rejected "${PROJECT_ROOT}/tsr/iter/iterJudge/${iter}_rejected_judgement.json" \
-        --output_path "${PROJECT_ROOT}/settings/tsr/data_dpo/iter${iter}/train.json"
+        --output_path "${PROJECT_ROOT}/settings/tsr/data_dpo/iter${iter}/train.json" \
+        "${PAIR_FLAGS[@]}"
 
     # Activate the second Conda environment
-    source "${CONDA_PATH}/bin/activate" "${CONDA_PATH}/envs/handbook"
+    activate_tsr_env handbook
     echo "Activated Conda environment: handbook"
 
     # Navigate to the alignment-handbook directory
@@ -126,18 +131,14 @@ do
     echo "Changed directory to alignment-handbook"
 
     # Set necessary environment variables
-    export HF_HOME="${PROJECT_ROOT}/cache"
+    export HF_HOME="${HF_HOME:-${PROJECT_ROOT}/cache}"
     echo "Set environment variables HF_HOME and HF_ENDPOINT"
 
-    echo "Logging into Hugging Face CLI"
-    huggingface-cli login --token "${HF_TOKEN}"
+    # Hugging Face reads HF_TOKEN directly; an empty token must not trigger login.
 
     # Run the accelerate launch command with the current iteration's config
     echo "Running accelerate launch for iter${iter}"
-    ACCELERATE_LOG_LEVEL=info accelerate launch \
-        --config_file "${PROJECT_ROOT}/settings/tsr/config/deepspeed_zero3.yaml" \
-        --num_processes "${WORLD_SIZE}" \
-        scripts/run_dpo.py "${PROJECT_ROOT}/settings/tsr/config/dpo/config_full_iter${iter}.yaml"
+    launch_training dpo "${PROJECT_ROOT}/settings/tsr/config/dpo/config_full_iter${iter}.yaml"
     echo "Completed DPO: iter${iter}"
 
     echo "==============================="

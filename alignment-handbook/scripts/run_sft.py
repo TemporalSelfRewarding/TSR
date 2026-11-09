@@ -207,7 +207,12 @@ def main():
         "tags": ["alignment-handbook"],
     }
     if trainer.accelerator.is_main_process:
-        trainer.create_model_card(**kwargs)
+        # TRL 0.12.2 uses model_name/dataset_name, not Transformers' finetuned_from/dataset.
+        trainer.create_model_card(
+            model_name=training_args.hub_model_id,
+            dataset_name=", ".join(data_args.dataset_mixer),
+            tags=kwargs["tags"],
+        )
         # Restore k,v cache for fast inference
         trainer.model.config.use_cache = True
         trainer.model.config.save_pretrained(training_args.output_dir)

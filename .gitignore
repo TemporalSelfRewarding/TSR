@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.cache/
+cache/
+models/
+logs/
+tsr/iter/
+settings/sr/data_dpo/
+settings/tsr/data_dpo/
+validation/
