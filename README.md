@@ -10,6 +10,10 @@ Self-Rewarding Language Models let a single model act as both the policy that ge
 
 **If you have any question, feel free to contact wx2013831686@gmail.com and yidongwang37@gmail.com**
 
+## Author-verified reproduction
+
+The reproduction results reported in [Tanhhhhtjy/tsr-reproduction](https://github.com/Tanhhhhtjy/tsr-reproduction) have been verified by the TSR authors. See that repository for the reproduction code, experimental settings, and evaluation results.
+
 ## Install environment
 
 This corrected checkout is based on official commit `020266aa9ef3cc35bf81384c9b59f98cff62aa1c`.
